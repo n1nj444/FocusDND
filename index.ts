@@ -25,19 +25,9 @@ const settings = definePluginSettings({
 let interval: ReturnType<typeof setInterval>;
 let focusWasActive = false;
 let warned = false;
-let lastStatus: string | null = null;
-
-async function setStatus(status: string) {
-    lastStatus = status;
-    await StatusSettings.updateSetting(status);
-}
 
 function handleUserSettingsChange() {
-    const status = StatusSettings.getSetting();
-    if (status !== lastStatus) {
-        lastStatus = status;
-        settings.store.savedStatus = "";
-    }
+    if (StatusSettings.getSetting() !== "dnd") settings.store.savedStatus = "";
 }
 
 async function check() {
@@ -48,13 +38,13 @@ async function check() {
         return;
     }
     const status = StatusSettings.getSetting();
-    if (focusActive && !focusWasActive && status !== "dnd" && status !== "invisible") {
+    if (focusActive && !focusWasActive && !settings.store.savedStatus && status !== "dnd" && status !== "invisible") {
         settings.store.savedStatus = status;
-        await setStatus("dnd");
+        await StatusSettings.updateSetting("dnd");
     } else if (!focusActive && settings.store.savedStatus) {
         const toRestore = settings.store.savedStatus;
         settings.store.savedStatus = "";
-        if (status === "dnd") await setStatus(toRestore);
+        if (status === "dnd") await StatusSettings.updateSetting(toRestore);
     }
     focusWasActive = focusActive;
 }
@@ -68,7 +58,6 @@ export default definePlugin({
     settings,
 
     start() {
-        lastStatus = StatusSettings.getSetting();
         UserSettingsProtoStore.addChangeListener(handleUserSettingsChange);
         check();
         interval = setInterval(check, 2000);
